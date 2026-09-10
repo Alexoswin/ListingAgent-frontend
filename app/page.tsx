@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { useFormik } from "formik";
-import { ArrowRight, Bell, ChevronDown, Heart, ImagePlus, Menu, Search, ShieldCheck, Sparkles, UserRound, X } from "lucide-react";
+import { ArrowRight, Bell, ChevronDown, Heart, ImagePlus, Menu, Moon, Search, ShieldCheck, Sparkles, Sun, UserRound, X } from "lucide-react";
 
 type Mode = "signup" | "login";
+type Theme = "light" | "dark";
 type AuthUser = { id: string; email: string; fullName: string; role: string };
 const categories = ["All listings", "Electronics", "Furniture", "Mobiles", "Home", "Vehicles"];
 type Listing = { id: string; title: string; desc?: string; price: number; originalPrice?: number; category: string; subcategory?: string; brand?: string; model?: string; image?: string | null };
@@ -23,7 +24,14 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [listingError, setListingError] = useState("");
   const [refreshTick, setRefreshTick] = useState(0);
+  const [theme, setTheme] = useState<Theme>(() => (typeof document !== "undefined" && document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"));
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:6001";
+  const toggleTheme = () => {
+    const next = theme === "light" ? "dark" : "light";
+    setTheme(next);
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("circle-theme", next); } catch { /* storage unavailable */ }
+  };
   useEffect(() => {
     fetch(`${apiUrl}/auth/me`, { credentials: "include" })
       .then((response) => response.ok ? response.json() as Promise<{ user: AuthUser }> : null)
@@ -49,7 +57,7 @@ export default function Home() {
   const onListingCreated = () => { setSellOpen(false); setCategory("All listings"); setPage(1); setLoading(true); setRefreshTick((tick) => tick + 1); };
 
   return <main className="site-shell">
-    <header className="topbar"><a className="brand" href="#top"><span className="brand-mark">C</span> circle</a><div className="desktop-nav"><a href="#listings">Browse</a><a href="#categories">Categories <ChevronDown size={14} /></a><button className="text-nav-button" onClick={openSell}>Sell with Circle</button></div><div className="nav-actions"><button className="icon-button" aria-label="Notifications"><Bell size={19} /></button>{currentUser ? <div className="user-menu"><span className="user-greeting"><span className="user-avatar">{currentUser.fullName.charAt(0).toUpperCase()}</span>{currentUser.fullName}</span><button className="logout-button" onClick={logout}>Log out</button></div> : <button className="signin-button" onClick={() => openAuth("login")}><UserRound size={17} /> Sign in</button>}<button className="menu-button" aria-label="Open menu" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X size={21} /> : <Menu size={21} />}</button></div></header>
+    <header className="topbar"><a className="brand" href="#top"><span className="brand-mark">C</span> circle</a><div className="desktop-nav"><a href="#listings">Browse</a><a href="#categories">Categories <ChevronDown size={14} /></a><button className="text-nav-button" onClick={openSell}>Sell with Circle</button></div><div className="nav-actions"><button className="theme-toggle" aria-label={theme === "light" ? "Switch to dark theme" : "Switch to light theme"} onClick={toggleTheme} suppressHydrationWarning>{theme === "light" ? <Moon size={17} /> : <Sun size={17} />}</button><button className="icon-button" aria-label="Notifications"><Bell size={19} /></button>{currentUser ? <div className="user-menu"><span className="user-greeting"><span className="user-avatar">{currentUser.fullName.charAt(0).toUpperCase()}</span>{currentUser.fullName}</span><button className="logout-button" onClick={logout}>Log out</button></div> : <button className="signin-button" onClick={() => openAuth("login")}><UserRound size={17} /> Sign in</button>}<button className="menu-button" aria-label="Open menu" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X size={21} /> : <Menu size={21} />}</button></div></header>
     {menuOpen && <nav className="mobile-menu"><a href="#listings" onClick={() => setMenuOpen(false)}>Browse listings</a><a href="#categories" onClick={() => setMenuOpen(false)}>Categories</a><button onClick={() => { openSell(); setMenuOpen(false); }}>Sell an item</button><button onClick={() => { openAuth("signup"); setMenuOpen(false); }}>Create account</button></nav>}
     <section className="hero" id="top"><div className="hero-copy"><p className="eyebrow"><Sparkles size={15} /> Better things, already loved</p><h1>Find your next <em>favorite</em> thing.</h1><p className="hero-subtitle">Quality pre-owned goods, thoughtfully checked and ready for a second life.</p><div className="searchbar"><Search size={19} /><input placeholder="Search for furniture, electronics, and more" aria-label="Search listings" /><button aria-label="Search"><ArrowRight size={19} /></button></div><div className="hero-trust"><ShieldCheck size={17} /><span>Every item is reviewed before it reaches you</span></div></div><div className="hero-art"><div className="hero-note"><span>Curated for you</span><strong>Small upgrades.<br />Big difference.</strong></div></div></section>
     <section className="category-strip" id="categories"><div className="section-label">Explore</div><div className="category-tabs">{categories.map((item) => <button className={category === item ? "active" : ""} key={item} onClick={() => selectCategory(item)}>{item}</button>)}</div></section>
