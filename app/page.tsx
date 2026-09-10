@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFormik } from "formik";
 import { ArrowRight, Bell, ChevronDown, Heart, ImagePlus, Menu, Moon, Search, ShieldCheck, Sparkles, Sun, UserRound, X } from "lucide-react";
 import { CATEGORY_LABELS, CATEGORY_SUBCATEGORIES, Category, Subcategory } from "./lib/categories";
+import { getCategoryHints, toFieldKey } from "./lib/category-spec-hints";
 
 type Mode = "signup" | "login";
 type Theme = "light" | "dark";
@@ -87,12 +88,19 @@ function AuthModal({ mode, setMode, onAuthenticated, onClose }: { mode: Mode; se
 }
 
 const sellCategories = Object.values(Category);
+const SELL_STEPS = ["Basics", "Specs & condition", "Photos", "Review"] as const;
 
 function SellModal({ apiUrl, onCreated, onClose }: { apiUrl: string; onCreated: () => void; onClose: () => void }) {
+  const [step, setStep] = useState(0);
   const [images, setImages] = useState<File[]>([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [progress, setProgress] = useState("");
+  const [specValues, setSpecValues] = useState<Record<string, string>>({});
+  const [conditionValues, setConditionValues] = useState<Record<string, boolean>>({});
+
+  const imagePreviews = useMemo(() => images.map((file) => URL.createObjectURL(file)), [images]);
+  useEffect(() => () => imagePreviews.forEach((url) => URL.revokeObjectURL(url)), [imagePreviews]);
 
   const addImages = (fileList: FileList | null) => {
     if (!fileList) return;
@@ -125,6 +133,7 @@ function SellModal({ apiUrl, onCreated, onClose }: { apiUrl: string; onCreated: 
           imageUrls.push(presignBody.s3Url);
         }
         setProgress("Publishing listing...");
+        const specs = Object.fromEntries(Object.entries(specValues).filter(([, value]) => value.trim()));
         const payload = {
           title: values.title.trim(),
           category: values.category,
@@ -135,6 +144,8 @@ function SellModal({ apiUrl, onCreated, onClose }: { apiUrl: string; onCreated: 
           ...(values.yearPurchased.trim() && { yearPurchased: values.yearPurchased.trim() }),
           ...(values.originalPrice && { originalPrice: Number(values.originalPrice) }),
           ...(values.desc.trim() && { desc: values.desc.trim() }),
+          ...(Object.keys(specs).length > 0 && { specs }),
+          ...(Object.keys(conditionValues).length > 0 && { conditionDetails: conditionValues }),
           ...(imageUrls.length > 0 && { imageUrls }),
         };
         const response = await fetch(`${apiUrl}/listings`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(payload) });
@@ -155,27 +166,89 @@ function SellModal({ apiUrl, onCreated, onClose }: { apiUrl: string; onCreated: 
   const changeCategory = (event: React.ChangeEvent<HTMLSelectElement>) => {
     formik.setFieldValue("category", event.target.value as Category);
     formik.setFieldValue("subcategory", "");
+    setSpecValues({});
+    setConditionValues({});
   };
+  const changeSubcategory = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    formik.setFieldValue("subcategory", event.target.value);
+    setSpecValues({});
+    setConditionValues({});
+  };
+  const hints = getCategoryHints(formik.values.category, formik.values.subcategory);
+  const setSpecValue = (key: string, value: string) => setSpecValues((prev) => ({ ...prev, [key]: value }));
+  const toggleConditionValue = (key: string) => setConditionValues((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  return <div className="modal-backdrop" role="dialog" aria-modal="true"><div className="sell-modal"><button className="modal-close" onClick={onClose} aria-label="Close"><X size={20} /></button><div className="sell-intro"><p className="eyebrow">Sell with Circle</p><h2>List your item.</h2><p>Add a few details and photos to get your item in front of buyers.</p></div><div className="sell-form"><form onSubmit={submit}>
-    <label>Title<input name="title" value={formik.values.title} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="e.g. Samsung Galaxy S22" />{formik.touched.title && formik.errors.title && <small>{formik.errors.title}</small>}</label>
-    <div className="sell-row">
-      <label>Category<select name="category" value={formik.values.category} onChange={changeCategory}>{sellCategories.map((item) => <option key={item} value={item}>{CATEGORY_LABELS[item]}</option>)}</select></label>
-      <label>Subcategory<select name="subcategory" value={formik.values.subcategory} onChange={formik.handleChange}><option value="">Optional</option>{CATEGORY_SUBCATEGORIES[formik.values.category].map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
-    </div>
-    <div className="sell-row">
-      <label>Brand<input name="brand" value={formik.values.brand} onChange={formik.handleChange} placeholder="Optional" /></label>
-      <label>Model<input name="model" value={formik.values.model} onChange={formik.handleChange} placeholder="Optional" /></label>
-    </div>
-    <div className="sell-row">
-      <label>Price (₹)<input name="price" type="number" min="0" value={formik.values.price} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="0" />{formik.touched.price && formik.errors.price && <small>{formik.errors.price}</small>}</label>
-      <label>Original price (₹)<input name="originalPrice" type="number" min="0" value={formik.values.originalPrice} onChange={formik.handleChange} placeholder="Optional" /></label>
-    </div>
-    <label>Year purchased<input name="yearPurchased" value={formik.values.yearPurchased} onChange={formik.handleChange} placeholder="Optional" /></label>
-    <label>Description<textarea name="desc" rows={3} value={formik.values.desc} onChange={formik.handleChange} placeholder="Condition, reason for selling, anything a buyer should know" /></label>
-    <label>Photos<label className="upload-dropzone"><ImagePlus size={18} /><span>Add up to 10 photos</span><input type="file" accept="image/png,image/jpeg,image/webp,image/avif" multiple hidden onChange={(event) => { addImages(event.target.files); event.target.value = ""; }} /></label></label>
-    {images.length > 0 && <div className="upload-thumbs">{images.map((file, index) => <div className="upload-thumb" key={`${file.name}-${index}`}><span>{file.name}</span><button type="button" onClick={() => removeImage(index)} aria-label={`Remove ${file.name}`}><X size={13} /></button></div>)}</div>}
-    <button className="submit-button" type="submit" disabled={submitting}>{submitting ? (progress || "Publishing...") : "Publish listing"} <ArrowRight size={17} /></button>
-    {error && <p className="form-error">{error}</p>}
-  </form></div></div></div>;
+  const goNext = async () => {
+    if (step === 0) {
+      const errors = await formik.validateForm();
+      formik.setTouched({ ...formik.touched, title: true, category: true, price: true });
+      if (errors.title || errors.category || errors.price) return;
+    }
+    setStep((current) => Math.min(current + 1, SELL_STEPS.length - 1));
+  };
+  const goBack = () => setStep((current) => Math.max(current - 1, 0));
+
+  const reviewRows: [string, string][] = [
+    ["Title", formik.values.title || "—"],
+    ["Category", `${CATEGORY_LABELS[formik.values.category]}${formik.values.subcategory ? ` · ${formik.values.subcategory}` : ""}`],
+    ["Brand / Model", [formik.values.brand, formik.values.model].filter(Boolean).join(" · ") || "—"],
+    ["Price", formik.values.price ? `₹${Number(formik.values.price).toLocaleString("en-IN")}` : "—"],
+    ...(formik.values.originalPrice ? [["Original price", `₹${Number(formik.values.originalPrice).toLocaleString("en-IN")}`] as [string, string]] : []),
+    ...(formik.values.yearPurchased ? [["Year purchased", formik.values.yearPurchased] as [string, string]] : []),
+  ];
+  const filledSpecs = Object.entries(specValues).filter(([, value]) => value.trim());
+  const checkedConditions = hints.conditionAspects.filter((aspect) => conditionValues[toFieldKey(aspect)]);
+
+  return <div className="modal-backdrop" role="dialog" aria-modal="true"><div className="sell-modal">
+    <button className="modal-close" onClick={onClose} aria-label="Close"><X size={20} /></button>
+    <div className="sell-intro"><p className="eyebrow">Sell with Circle</p><h2>List your item.</h2><p>Add a few details and photos to get your item in front of buyers.</p></div>
+    <div className="wizard-steps">{SELL_STEPS.map((label, index) => <div className={`wizard-step${index === step ? " active" : ""}${index < step ? " done" : ""}`} key={label}><span className="wizard-step-dot">{index + 1}</span><span className="wizard-step-label">{label}</span></div>)}</div>
+    <div className="sell-form"><form onSubmit={submit}>
+
+      {step === 0 && <div className="wizard-panel">
+        <label>Title<input name="title" value={formik.values.title} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="e.g. Samsung Galaxy S22" />{formik.touched.title && formik.errors.title && <small>{formik.errors.title}</small>}</label>
+        <div className="sell-row">
+          <label>Category<select name="category" value={formik.values.category} onChange={changeCategory}>{sellCategories.map((item) => <option key={item} value={item}>{CATEGORY_LABELS[item]}</option>)}</select></label>
+          <label>Subcategory<select name="subcategory" value={formik.values.subcategory} onChange={changeSubcategory}><option value="">Optional</option>{CATEGORY_SUBCATEGORIES[formik.values.category].map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+        </div>
+        <div className="sell-row">
+          <label>Brand<input name="brand" value={formik.values.brand} onChange={formik.handleChange} placeholder="Optional" /></label>
+          <label>Model<input name="model" value={formik.values.model} onChange={formik.handleChange} placeholder="Optional" /></label>
+        </div>
+        <div className="sell-row">
+          <label>Price (₹)<input name="price" type="number" min="0" value={formik.values.price} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="0" />{formik.touched.price && formik.errors.price && <small>{formik.errors.price}</small>}</label>
+          <label>Original price (₹)<input name="originalPrice" type="number" min="0" value={formik.values.originalPrice} onChange={formik.handleChange} placeholder="Optional" /></label>
+        </div>
+        <label>Year purchased<input name="yearPurchased" value={formik.values.yearPurchased} onChange={formik.handleChange} placeholder="Optional" /></label>
+        <label>Description<textarea name="desc" rows={3} value={formik.values.desc} onChange={formik.handleChange} placeholder="Condition, reason for selling, anything a buyer should know" /></label>
+      </div>}
+
+      {step === 1 && <div className="wizard-panel">
+        {hints.specKeys.length > 0 ? <fieldset className="sell-fieldset"><legend>Specifications</legend>{hints.specKeys.map((key) => { const fieldKey = toFieldKey(key); return <label key={fieldKey}>{key}<input value={specValues[fieldKey] ?? ""} onChange={(event) => setSpecValue(fieldKey, event.target.value)} placeholder="Optional" /></label>; })}</fieldset> : <p className="wizard-hint">Pick a subcategory on the first step to see suggested specification fields.</p>}
+        <fieldset className="sell-fieldset"><legend>Condition details</legend>{hints.conditionAspects.map((aspect) => { const fieldKey = toFieldKey(aspect); return <label key={fieldKey} className="checkbox-label"><input type="checkbox" checked={Boolean(conditionValues[fieldKey])} onChange={() => toggleConditionValue(fieldKey)} />{aspect}</label>; })}</fieldset>
+      </div>}
+
+      {step === 2 && <div className="wizard-panel">
+        <label>Photos<label className="upload-dropzone"><ImagePlus size={18} /><span>Add up to 10 photos</span><input type="file" accept="image/png,image/jpeg,image/webp,image/avif" multiple hidden onChange={(event) => { addImages(event.target.files); event.target.value = ""; }} /></label></label>
+        {images.length > 0 ? <div className="upload-grid">{images.map((file, index) => <div className="upload-tile" key={`${file.name}-${index}`}><img src={imagePreviews[index]} alt={file.name} /><button type="button" className="upload-tile-remove" onClick={() => removeImage(index)} aria-label={`Remove ${file.name}`}><X size={13} /></button>{index === 0 && <span className="upload-tile-cover">Cover</span>}</div>)}</div> : <p className="wizard-hint">Listings with clear photos get more views. The first photo becomes the cover image.</p>}
+      </div>}
+
+      {step === 3 && <div className="wizard-panel">
+        <div className="review-card">
+          {images[0] && <img className="review-cover" src={imagePreviews[0]} alt="Cover" />}
+          <dl className="review-list">{reviewRows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+        </div>
+        {filledSpecs.length > 0 && <div className="review-tags"><span className="review-tags-label">Specs</span>{filledSpecs.map(([key, value]) => <span className="review-tag" key={key}>{value}</span>)}</div>}
+        {checkedConditions.length > 0 && <div className="review-tags"><span className="review-tags-label">Flagged</span>{checkedConditions.map((aspect) => <span className="review-tag" key={aspect}>{aspect}</span>)}</div>}
+        {images.length > 1 && <p className="wizard-hint">{images.length} photos will be uploaded.</p>}
+      </div>}
+
+      <div className="wizard-actions">
+        {step > 0 && <button type="button" className="ghost-button" onClick={goBack}>Back</button>}
+        {step < SELL_STEPS.length - 1 && <button type="button" className="submit-button" onClick={goNext}>Continue <ArrowRight size={17} /></button>}
+        {step === SELL_STEPS.length - 1 && <button className="submit-button" type="submit" disabled={submitting}>{submitting ? (progress || "Publishing...") : "Publish listing"} <ArrowRight size={17} /></button>}
+      </div>
+      {error && <p className="form-error">{error}</p>}
+    </form></div>
+  </div></div>;
 }
