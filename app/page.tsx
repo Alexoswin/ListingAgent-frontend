@@ -1,69 +1,47 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { useFormik } from "formik";
+import { ArrowRight, Bell, ChevronDown, Heart, Menu, Search, ShieldCheck, Sparkles, UserRound, X } from "lucide-react";
+
+type Mode = "signup" | "login";
+const listings = [
+  { title: "ASUS TUF Gaming F15", meta: "Intel i7 · 64GB RAM · 512GB SSD", price: "₹95,000", oldPrice: "₹1,24,990", category: "Electronics", image: "https://images.unsplash.com/photo-1603302576837-37561b2e2302?auto=format&fit=crop&w=900&q=85" },
+  { title: "Featherlite Liberate Chair", meta: "Ergonomic · Charcoal grey", price: "₹12,499", oldPrice: "₹18,999", category: "Furniture", image: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=900&q=85" },
+  { title: "Sony WH-1000XM5", meta: "Wireless · Noise cancelling", price: "₹21,990", oldPrice: "₹34,990", category: "Electronics", image: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=900&q=85" },
+  { title: "Solid Wood Study Table", meta: "Teak finish · Good condition", price: "₹8,750", oldPrice: "₹14,500", category: "Furniture", image: "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=85" },
+  { title: "Apple iPhone 14", meta: "128GB · Midnight · 2023", price: "₹39,500", oldPrice: "₹69,900", category: "Mobiles", image: "https://images.unsplash.com/photo-1592286927505-2fd0c7b6c2b3?auto=format&fit=crop&w=900&q=85" },
+  { title: "Minimal Floor Lamp", meta: "Warm light · Brass detail", price: "₹2,450", oldPrice: "₹4,999", category: "Home", image: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=900&q=85" },
+];
+const categories = ["All listings", "Electronics", "Furniture", "Mobiles", "Home", "Vehicles"];
 
 export default function Home() {
-  return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
-  );
+  const [authOpen, setAuthOpen] = useState(false);
+  const [mode, setMode] = useState<Mode>("signup");
+  const [category, setCategory] = useState("All listings");
+  const [menuOpen, setMenuOpen] = useState(false);
+  const visibleListings = category === "All listings" ? listings : listings.filter((item) => item.category === category);
+  const openAuth = (nextMode: Mode) => { setMode(nextMode); setAuthOpen(true); };
+
+  return <main className="site-shell">
+    <header className="topbar"><a className="brand" href="#top"><span className="brand-mark">C</span> circle</a><div className="desktop-nav"><a href="#listings">Browse</a><a href="#categories">Categories <ChevronDown size={14} /></a><a href="#sell">Sell with Circle</a></div><div className="nav-actions"><button className="icon-button" aria-label="Notifications"><Bell size={19} /></button><button className="signin-button" onClick={() => openAuth("login")}><UserRound size={17} /> Sign in</button><button className="menu-button" aria-label="Open menu" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X size={21} /> : <Menu size={21} />}</button></div></header>
+    {menuOpen && <nav className="mobile-menu"><a href="#listings" onClick={() => setMenuOpen(false)}>Browse listings</a><a href="#categories" onClick={() => setMenuOpen(false)}>Categories</a><button onClick={() => { openAuth("signup"); setMenuOpen(false); }}>Create account</button></nav>}
+    <section className="hero" id="top"><div className="hero-copy"><p className="eyebrow"><Sparkles size={15} /> Better things, already loved</p><h1>Find your next <em>favorite</em> thing.</h1><p className="hero-subtitle">Quality pre-owned goods, thoughtfully checked and ready for a second life.</p><div className="searchbar"><Search size={19} /><input placeholder="Search for furniture, electronics, and more" aria-label="Search listings" /><button aria-label="Search"><ArrowRight size={19} /></button></div><div className="hero-trust"><ShieldCheck size={17} /><span>Every item is reviewed before it reaches you</span></div></div><div className="hero-art"><div className="hero-note"><span>Curated for you</span><strong>Small upgrades.<br />Big difference.</strong></div></div></section>
+    <section className="category-strip" id="categories"><div className="section-label">Explore</div><div className="category-tabs">{categories.map((item) => <button className={category === item ? "active" : ""} key={item} onClick={() => setCategory(item)}>{item}</button>)}</div></section>
+    <section className="listings-section" id="listings"><div className="section-heading"><div><p className="eyebrow">Freshly listed</p><h2>Good finds, great stories.</h2></div><button className="text-button">View all <ArrowRight size={16} /></button></div><div className="listing-grid">{visibleListings.map((item) => <article className="listing-card" key={item.title}><div className="listing-image"><img src={item.image} alt={item.title} /><button className="heart-button" aria-label={`Save ${item.title}`}><Heart size={18} /></button><span>{item.category}</span></div><div className="listing-info"><h3>{item.title}</h3><p>{item.meta}</p><div className="price-row"><strong>{item.price}</strong><del>{item.oldPrice}</del></div></div></article>)}</div></section>
+    <section className="seller-band" id="sell"><div><p className="eyebrow">Have something good?</p><h2>Give it a second life.</h2></div><button className="dark-button" onClick={() => openAuth("signup")}>Start selling <ArrowRight size={17} /></button></section>
+    <footer><a className="brand" href="#top"><span className="brand-mark">C</span> circle</a><p>Pre-loved, properly considered.</p><span>© 2026 Circle</span></footer>
+    {authOpen && <AuthModal mode={mode} setMode={setMode} onClose={() => setAuthOpen(false)} />}
+  </main>;
+}
+
+function AuthModal({ mode, setMode, onClose }: { mode: Mode; setMode: (mode: Mode) => void; onClose: () => void }) {
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpEmail, setOtpEmail] = useState("");
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:6001";
+  const formik = useFormik({ initialValues: { fullName: "", email: "", password: "" }, validate: (values) => { const errors: Record<string, string> = {}; if (mode === "signup" && !values.fullName.trim()) errors.fullName = "Your name is required"; if (!/^\S+@\S+\.\S+$/.test(values.email)) errors.email = "Enter a valid email"; if (values.password.length < 8) errors.password = "Use at least 8 characters"; return errors; }, onSubmit: async (values, helpers) => { setMessage(""); setError(""); try { const response = await fetch(`${apiUrl}/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(values) }); const body = await response.json(); if (!response.ok) throw new Error(body.message ?? "Unable to complete request"); if (mode === "signup") { setOtpEmail(values.email); setOtpStep(true); setMessage("We sent a verification code to your email."); } else { onClose(); } } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to complete request"); } finally { helpers.setSubmitting(false); } } });
+  const otpFormik = useFormik({ initialValues: { otp: "" }, validate: (values) => values.otp.length === 6 && /^\d+$/.test(values.otp) ? {} : { otp: "Enter the 6-digit code" }, onSubmit: async (values, helpers) => { setMessage(""); setError(""); try { const response = await fetch(`${apiUrl}/auth/verify-otp`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ email: otpEmail, otp: values.otp }) }); const body = await response.json(); if (!response.ok) throw new Error(body.message ?? "Invalid verification code"); onClose(); } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to verify code"); } finally { helpers.setSubmitting(false); } } });
+  return <div className="modal-backdrop" role="dialog" aria-modal="true"><div className="auth-modal"><button className="modal-close" onClick={onClose} aria-label="Close"><X size={20} /></button><div className="auth-intro"><span className="brand-mark">C</span><p className="eyebrow">Welcome to Circle</p><h2>{otpStep ? "One small step." : mode === "signup" ? "Make room for good things." : "Welcome back."}</h2><p>{otpStep ? "Verify your email to finish creating your account." : mode === "signup" ? "Join a thoughtful community of buyers and sellers." : "Your saved finds are waiting."}</p></div><div className="auth-form">{!otpStep && <div className="auth-switch"><button type="button" className={mode === "signup" ? "selected" : ""} onClick={() => { setMode("signup"); setError(""); }}>Create account</button><button type="button" className={mode === "login" ? "selected" : ""} onClick={() => { setMode("login"); setError(""); }}>Sign in</button></div>}{otpStep ? <form onSubmit={otpFormik.handleSubmit}><p className="form-intro">Enter the 6-digit code sent to <strong>{otpEmail}</strong>.</p><label>Verification code<input name="otp" inputMode="numeric" maxLength={6} value={otpFormik.values.otp} onChange={otpFormik.handleChange} onBlur={otpFormik.handleBlur} placeholder="000000" />{otpFormik.touched.otp && otpFormik.errors.otp && <small>{otpFormik.errors.otp}</small>}</label><button className="submit-button" type="submit" disabled={otpFormik.isSubmitting}>{otpFormik.isSubmitting ? "Verifying..." : "Verify email"} <ArrowRight size={17} /></button></form> : <form onSubmit={formik.handleSubmit}>{mode === "signup" && <label>Full name<input name="fullName" value={formik.values.fullName} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="Your name" />{formik.touched.fullName && formik.errors.fullName && <small>{formik.errors.fullName}</small>}</label>}<label>Email address<input type="email" name="email" value={formik.values.email} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="you@example.com" />{formik.touched.email && formik.errors.email && <small>{formik.errors.email}</small>}</label><label>Password<input type="password" name="password" value={formik.values.password} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="At least 8 characters" />{formik.touched.password && formik.errors.password && <small>{formik.errors.password}</small>}</label><button className="submit-button" type="submit" disabled={formik.isSubmitting}>{formik.isSubmitting ? "Please wait..." : mode === "signup" ? "Continue with email" : "Sign in"} <ArrowRight size={17} /></button></form>}{message && <p className="form-success">{message}</p>}{error && <p className="form-error">{error}</p>}<p className="form-note">By continuing, you agree to Circle&apos;s terms and privacy policy.</p></div></div></div>;
 }
