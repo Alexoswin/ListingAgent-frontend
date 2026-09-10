@@ -294,3 +294,52 @@ footer span{margin-left:auto}
 .review-tags-label{color:var(--muted);flex:0 0 100%;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
 .review-tag{background:var(--coral-tint);border-radius:999px;color:var(--ink);font-size:11px;padding:5px 10px}
 @media(max-width:800px){.sell-intro{padding:30px 24px 0}.sell-form{padding:20px 24px 30px}.sell-row{grid-template-columns:1fr}.wizard-steps{padding:16px 24px 0}.wizard-step-label{display:none}.upload-grid{grid-template-columns:repeat(2,1fr)}}
+
+/* ---- Sell chooser: create vs generate ---- */
+.sell-choice{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));padding:24px 40px 40px}
+.sell-choice button{background:var(--white);border:1px solid var(--line);border-radius:var(--radius-m);cursor:pointer;display:flex;flex-direction:column;gap:8px;padding:20px;text-align:left;transition:border-color .2s var(--ease),transform .2s var(--ease),box-shadow .2s var(--ease)}
+.sell-choice button:hover{border-color:var(--coral);transform:translateY(-2px);box-shadow:0 10px 26px -18px var(--ink)}
+.sell-choice button:focus-visible{outline:2px solid var(--coral);outline-offset:2px}
+.sell-choice button.featured{background:var(--coral-tint);border-color:var(--coral-soft)}
+.sell-choice-icon{align-items:center;background:var(--coral);border-radius:9px;color:#fff;display:inline-flex;height:34px;justify-content:center;width:34px}
+.sell-choice strong{font-size:16px;letter-spacing:-.2px}
+.sell-choice p{color:var(--muted);font-size:13px;line-height:1.55;margin:0}
+.sell-choice-go{align-items:center;color:var(--coral);display:flex;font-size:13px;font-weight:600;gap:5px;margin-top:auto;padding-top:6px}
+
+/* ---- Generate flow: progress + result ---- */
+.agent-stages{display:flex;flex-direction:column;gap:10px;padding:24px 40px 40px}
+.agent-stage{align-items:center;border:1px solid var(--line);border-radius:var(--radius-s);color:var(--muted);display:flex;font-size:13px;gap:11px;padding:12px 14px;transition:color .3s var(--ease),border-color .3s var(--ease)}
+.agent-stage-icon{align-items:center;color:var(--stone);display:inline-flex;justify-content:center}
+.agent-stage.active{border-color:var(--coral);color:var(--ink)}
+.agent-stage.active .agent-stage-icon{animation:spin 1.6s linear infinite;color:var(--coral)}
+.agent-stage.done{color:var(--ink)}
+.agent-stage.done .agent-stage-icon{color:var(--success)}
+
+.verdict-banner{align-items:flex-start;background:color-mix(in srgb,var(--danger) 10%,var(--white));border:1px solid color-mix(in srgb,var(--danger) 40%,transparent);border-radius:var(--radius-m);color:var(--danger);display:flex;gap:11px;margin:0 0 18px;padding:14px 16px}
+.verdict-banner.ok{background:color-mix(in srgb,var(--success) 10%,var(--white));border-color:color-mix(in srgb,var(--success) 40%,transparent);color:var(--success)}
+.verdict-banner strong{display:block;font-size:14px}
+.verdict-banner p{color:var(--muted);font-size:13px;line-height:1.55;margin:4px 0 0}
+
+.generated-block{border-top:1px solid var(--line);padding-top:15px}
+.generated-block:first-child{border-top:none;padding-top:0}
+.generated-block h3{font-size:17px;letter-spacing:-.3px;margin:0 0 7px}
+.generated-block h4{color:var(--muted);font-size:11px;font-weight:700;letter-spacing:.09em;margin:0 0 10px;text-transform:uppercase}
+.generated-block p{font-size:13.5px;line-height:1.6;margin:0 0 7px}
+.generated-block p:last-child{margin-bottom:0}
+.generated-mrp{color:var(--muted);font-size:13px}
+
+.spec-list{display:flex;flex-direction:column;gap:0;margin:0}
+.spec-list>div{border-bottom:1px solid var(--line);display:grid;gap:4px 16px;grid-template-columns:minmax(96px,34%) 1fr;padding:8px 0}
+.spec-list>div:last-child{border-bottom:none}
+.spec-list dt{color:var(--muted);font-size:13px}
+.spec-list dd{align-items:center;display:flex;flex-wrap:wrap;font-size:13.5px;gap:8px;margin:0}
+
+.source-tag{border:1px solid currentColor;border-radius:100px;font-size:10.5px;font-weight:600;letter-spacing:.02em;padding:1px 7px;white-space:nowrap}
+.source-image,.source-confirmed{color:var(--success)}
+.source-lookup{color:var(--coral)}
+.source-seller,.source-unverifiable{color:var(--muted)}
+.source-contradicted{color:var(--danger)}
+
+.plain-list{display:flex;flex-direction:column;gap:7px;list-style:none;margin:0;padding:0}
+.plain-list li{color:var(--muted);font-size:13px;line-height:1.55;padding-left:14px;position:relative}
+.plain-list li::before{background:var(--stone);border-radius:50%;content:"";height:5px;left:0;position:absolute;top:7px;width:5px}

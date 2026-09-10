@@ -2,11 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useFormik } from "formik";
-import { ArrowRight, Bell, ChevronDown, Heart, ImagePlus, Menu, Moon, Search, ShieldCheck, Sparkles, Sun, UserRound, X } from "lucide-react";
+import { ArrowRight, Bell, ChevronDown, Heart, ImagePlus, Menu, Moon, PencilLine, Search, ShieldCheck, Sparkles, Sun, UserRound, X } from "lucide-react";
+import GenerateModal from "./components/GenerateModal";
 import { CATEGORY_LABELS, CATEGORY_SUBCATEGORIES, Category, Subcategory } from "./lib/categories";
 import { getCategoryHints, toFieldKey } from "./lib/category-spec-hints";
+import { uploadImages } from "./lib/upload";
 
 type Mode = "signup" | "login";
+/** Which selling surface is open: the chooser, or one of the two flows. */
+type SellView = "choose" | "create" | "generate";
 type Theme = "light" | "dark";
 type AuthUser = { id: string; email: string; fullName: string; role: string };
 const ALL_LISTINGS = "All listings" as const;
@@ -16,7 +20,7 @@ type ListingsResponse = { items: Listing[]; page: number; limit: number; total: 
 
 export default function Home() {
   const [authOpen, setAuthOpen] = useState(false);
-  const [sellOpen, setSellOpen] = useState(false);
+  const [sellView, setSellView] = useState<SellView | null>(null);
   const [mode, setMode] = useState<Mode>("signup");
   const [category, setCategory] = useState<typeof ALL_LISTINGS | Category>(ALL_LISTINGS);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -55,9 +59,10 @@ export default function Home() {
   const selectCategory = (item: typeof ALL_LISTINGS | Category) => { setLoading(true); setListingError(""); setCategory(item); setPage(1); };
   const changePage = (nextPage: number) => { setLoading(true); setListingError(""); setPage(nextPage); };
   const openAuth = (nextMode: Mode) => { setMode(nextMode); setAuthOpen(true); };
-  const openSell = () => { if (currentUser) setSellOpen(true); else openAuth("signup"); };
+  const openSell = () => { if (currentUser) setSellView("choose"); else openAuth("signup"); };
   const logout = async () => { await fetch(`${apiUrl}/auth/logout`, { method: "POST", credentials: "include" }); setCurrentUser(null); };
-  const onListingCreated = () => { setSellOpen(false); setCategory(ALL_LISTINGS); setPage(1); setLoading(true); setRefreshTick((tick) => tick + 1); };
+  const closeSell = () => setSellView(null);
+  const onListingCreated = () => { closeSell(); setCategory(ALL_LISTINGS); setPage(1); setLoading(true); setRefreshTick((tick) => tick + 1); };
 
   return <main className="site-shell">
     <header className="topbar"><a className="brand" href="#top"><span className="brand-mark">C</span> circle</a><div className="desktop-nav"><a href="#listings">Browse</a><a href="#categories">Categories <ChevronDown size={14} /></a><button className="text-nav-button" onClick={openSell}>Sell with Circle</button></div><div className="nav-actions"><button className="theme-toggle" aria-label={theme === "light" ? "Switch to dark theme" : "Switch to light theme"} onClick={toggleTheme} suppressHydrationWarning>{theme === "light" ? <Moon size={17} /> : <Sun size={17} />}</button><button className="icon-button" aria-label="Notifications"><Bell size={19} /></button>{currentUser ? <div className="user-menu"><span className="user-greeting"><span className="user-avatar">{currentUser.fullName.charAt(0).toUpperCase()}</span>{currentUser.fullName}</span><button className="logout-button" onClick={logout}>Log out</button></div> : <button className="signin-button" onClick={() => openAuth("login")}><UserRound size={17} /> Sign in</button>}<button className="menu-button" aria-label="Open menu" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X size={21} /> : <Menu size={21} />}</button></div></header>
@@ -68,7 +73,9 @@ export default function Home() {
     <section className="seller-band" id="sell"><div><p className="eyebrow">Have something good?</p><h2>Give it a second life.</h2></div><button className="dark-button" onClick={openSell}>Start selling <ArrowRight size={17} /></button></section>
     <footer><a className="brand" href="#top"><span className="brand-mark">C</span> circle</a><p>Pre-loved, properly considered.</p><span>© 2026 Circle</span></footer>
     {authOpen && <AuthModal mode={mode} setMode={setMode} onAuthenticated={setCurrentUser} onClose={() => setAuthOpen(false)} />}
-    {sellOpen && <SellModal apiUrl={apiUrl} onCreated={onListingCreated} onClose={() => setSellOpen(false)} />}
+    {sellView === "choose" && <SellChoice onPick={setSellView} onClose={closeSell} />}
+    {sellView === "create" && <SellModal apiUrl={apiUrl} onCreated={onListingCreated} onClose={closeSell} />}
+    {sellView === "generate" && <GenerateModal apiUrl={apiUrl} onDone={onListingCreated} onClose={closeSell} />}
   </main>;
 }
 
@@ -85,6 +92,31 @@ function AuthModal({ mode, setMode, onAuthenticated, onClose }: { mode: Mode; se
   const formik = useFormik({ initialValues: { fullName: "", email: "", password: "" }, validate: (values) => { const errors: Record<string, string> = {}; if (mode === "signup" && !values.fullName.trim()) errors.fullName = "Your name is required"; if (!/^\S+@\S+\.\S+$/.test(values.email)) errors.email = "Enter a valid email"; if (values.password.length < 8) errors.password = "Use at least 8 characters"; return errors; }, onSubmit: async (values, helpers) => { setMessage(""); setError(""); try { const payload = mode === "signup" ? values : { email: values.email, password: values.password }; const response = await fetch(`${apiUrl}/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(payload) }); const body = await response.json(); if (!response.ok) throw new Error(body.message ?? "Unable to complete request"); if (mode === "signup") { setOtpEmail(values.email); setOtpStep(true); setMessage("We sent a verification code to your email."); } else { onAuthenticated(body.user); onClose(); } } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to complete request"); } finally { helpers.setSubmitting(false); } } });
   const otpFormik = useFormik({ initialValues: { otp: "" }, validate: (values) => values.otp.length === 6 && /^\d+$/.test(values.otp) ? {} : { otp: "Enter the 6-digit code" }, onSubmit: async (values, helpers) => { setMessage(""); setError(""); try { const response = await fetch(`${apiUrl}/auth/verify-otp`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ email: otpEmail, otp: values.otp }) }); const body = await response.json(); if (!response.ok) throw new Error(body.message ?? "Invalid verification code"); onAuthenticated(body.user); onClose(); } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to verify code"); } finally { helpers.setSubmitting(false); } } });
   return <div className="modal-backdrop" role="dialog" aria-modal="true"><div className="auth-modal"><button className="modal-close" onClick={onClose} aria-label="Close"><X size={20} /></button><div className="auth-intro"><span className="brand-mark">C</span><p className="eyebrow">Welcome to Circle</p><h2>{otpStep ? "One small step." : mode === "signup" ? "Make room for good things." : "Welcome back."}</h2><p>{otpStep ? "Verify your email to finish creating your account." : mode === "signup" ? "Join a thoughtful community of buyers and sellers." : "Your saved finds are waiting."}</p></div><div className="auth-form">{!otpStep && <div className="auth-switch"><button type="button" className={mode === "signup" ? "selected" : ""} onClick={() => { setMode("signup"); setError(""); }}>Create account</button><button type="button" className={mode === "login" ? "selected" : ""} onClick={() => { setMode("login"); setError(""); }}>Sign in</button></div>}{otpStep ? <form onSubmit={otpFormik.handleSubmit}><p className="form-intro">Enter the 6-digit code sent to <strong>{otpEmail}</strong>.</p><label>Verification code<input name="otp" inputMode="numeric" maxLength={6} value={otpFormik.values.otp} onChange={otpFormik.handleChange} onBlur={otpFormik.handleBlur} placeholder="000000" />{otpFormik.touched.otp && otpFormik.errors.otp && <small>{otpFormik.errors.otp}</small>}</label><button className="submit-button" type="submit" disabled={otpFormik.isSubmitting}>{otpFormik.isSubmitting ? "Verifying..." : "Verify email"} <ArrowRight size={17} /></button></form> : <form onSubmit={formik.handleSubmit}>{mode === "signup" && <label>Full name<input name="fullName" value={formik.values.fullName} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="Your name" />{formik.touched.fullName && formik.errors.fullName && <small>{formik.errors.fullName}</small>}</label>}<label>Email address<input type="email" name="email" value={formik.values.email} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="you@example.com" />{formik.touched.email && formik.errors.email && <small>{formik.errors.email}</small>}</label><label>Password<input type="password" name="password" value={formik.values.password} onChange={formik.handleChange} onBlur={formik.handleBlur} placeholder="At least 8 characters" />{formik.touched.password && formik.errors.password && <small>{formik.errors.password}</small>}</label><button className="submit-button" type="submit" disabled={formik.isSubmitting}>{formik.isSubmitting ? "Please wait..." : mode === "signup" ? "Continue with email" : "Sign in"} <ArrowRight size={17} /></button></form>}{message && <p className="form-success">{message}</p>}{error && <p className="form-error">{error}</p>}<p className="form-note">By continuing, you agree to Circle&apos;s terms and privacy policy.</p></div></div></div>;
+}
+
+/**
+ * The fork between the two selling flows. Both save a listing; they differ in
+ * who writes it and whether anything checks the result.
+ */
+function SellChoice({ onPick, onClose }: { onPick: (view: SellView) => void; onClose: () => void }) {
+  return <div className="modal-backdrop" role="dialog" aria-modal="true"><div className="sell-modal">
+    <button className="modal-close" onClick={onClose} aria-label="Close"><X size={20} /></button>
+    <div className="sell-intro"><p className="eyebrow">Sell with Circle</p><h2>How would you like to list?</h2><p>Both end up in the same place. One you write yourself, one the agent writes and then checks against your photos.</p></div>
+    <div className="sell-choice">
+      <button type="button" onClick={() => onPick("create")}>
+        <span className="sell-choice-icon"><PencilLine size={19} /></span>
+        <strong>Create listing</strong>
+        <p>Fill in the details yourself, step by step. Every word is yours.</p>
+        <span className="sell-choice-go">Write it myself <ArrowRight size={15} /></span>
+      </button>
+      <button type="button" className="featured" onClick={() => onPick("generate")}>
+        <span className="sell-choice-icon"><Sparkles size={19} /></span>
+        <strong>Generate listing</strong>
+        <p>Add photos and a few basics. The agent reads the photos, writes the listing, then verifies its own draft before anything goes live.</p>
+        <span className="sell-choice-go">Use the agent <ArrowRight size={15} /></span>
+      </button>
+    </div>
+  </div></div>;
 }
 
 const sellCategories = Object.values(Category);
@@ -121,17 +153,7 @@ function SellModal({ apiUrl, onCreated, onClose }: { apiUrl: string; onCreated: 
     onSubmit: async (values, helpers) => {
       setError("");
       try {
-        const imageUrls: string[] = [];
-        for (let i = 0; i < images.length; i += 1) {
-          const file = images[i];
-          setProgress(`Uploading image ${i + 1} of ${images.length}...`);
-          const presignResponse = await fetch(`${apiUrl}/uploads/s3-url`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ fileName: file.name, contentType: file.type }) });
-          const presignBody = await presignResponse.json();
-          if (!presignResponse.ok) throw new Error(presignBody.message ?? "Unable to prepare image upload");
-          const uploadResponse = await fetch(presignBody.uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
-          if (!uploadResponse.ok) throw new Error("Image upload to S3 failed");
-          imageUrls.push(presignBody.s3Url);
-        }
+        const imageUrls = await uploadImages(apiUrl, images, setProgress);
         setProgress("Publishing listing...");
         const specs = Object.fromEntries(Object.entries(specValues).filter(([, value]) => value.trim()));
         const payload = {
