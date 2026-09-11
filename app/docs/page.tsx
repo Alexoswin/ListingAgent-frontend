@@ -88,7 +88,7 @@ export default function DocsPage() {
 
           <div className="docs-note">
             <strong>Sourcing discipline:</strong> every specification the draft publishes carries one of three
-            sources — <code>image</code> (must name the photo it&apos;s read from), <code>lookup</code> (from
+            sources — <code>image</code> (must name the photo it&apos;s read from), <code>lookup</code> (from{" "}
             <code>product_lookup</code>&apos;s web search), or <code>seller</code> (asserted, uncorroborated). A spec that fits none of the
             three doesn&apos;t go in the listing at all — omitting an unsure spec is the correct move, never a
             mark against the draft.
@@ -98,7 +98,7 @@ export default function DocsPage() {
         <section className="docs-section">
           <h2>What it logs</h2>
           <p>
-            Every step logs when it succeeds and when it doesn&apos;t, and every line carries the listing id, so one
+            Every step logs when it succeeds and when it doesn&apos;t, and every line carries the listing id, so one{" "}
             <code>grep</code> follows a single listing through both passes. A plain log means it worked, a warning
             means it took the cautious path (a rejected draft, an unverified MRP, an escalation), and an error means
             something actually broke.
