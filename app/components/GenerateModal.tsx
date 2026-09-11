@@ -9,6 +9,9 @@ import { uploadImages } from "../lib/upload";
 type SpecSource = "image" | "lookup" | "seller";
 
 type GeneratedPdp = {
+  category_reasoning: string;
+  category: Category;
+  subcategory: Subcategory | null;
   title: string;
   description: string;
   original_mrp: number | null;
@@ -47,6 +50,11 @@ const STAGES = [
 ];
 
 const categories = Object.values(Category);
+
+type Filing = { category: Category; subcategory: Subcategory | "" | null };
+
+const filingLabel = ({ category, subcategory }: Filing) =>
+  subcategory ? `${CATEGORY_LABELS[category]} · ${subcategory}` : CATEGORY_LABELS[category];
 
 export default function GenerateModal({
   apiUrl,
@@ -136,7 +144,7 @@ export default function GenerateModal({
         <button className="modal-close" onClick={onClose} aria-label="Close"><X size={20} /></button>
 
         {result ? (
-          <ResultView result={result} onDone={onDone} />
+          <ResultView result={result} submitted={{ category: formik.values.category, subcategory: formik.values.subcategory }} onDone={onDone} />
         ) : formik.isSubmitting ? (
           <RunningView stage={stage} />
         ) : (
@@ -248,10 +256,15 @@ function RunningView({ stage }: { stage: number }) {
   );
 }
 
-function ResultView({ result, onDone }: { result: GenerateResult; onDone: () => void }) {
+function ResultView({ result, submitted, onDone }: { result: GenerateResult; submitted: Filing; onDone: () => void }) {
   const { review, generated_pdp: pdp } = result;
   const published = review.verdict === "auto_publish";
   const flagged = review.findings.filter((finding) => finding.status !== "confirmed");
+  // Same rule as the backend's category_corrected / subcategory_corrected:
+  // filling in a blank subcategory is not a move.
+  const moved =
+    pdp !== null &&
+    (pdp.category !== submitted.category || (submitted.subcategory !== "" && pdp.subcategory !== submitted.subcategory));
 
   return (
     <>
@@ -280,6 +293,11 @@ function ResultView({ result, onDone }: { result: GenerateResult; onDone: () => 
               <h3>{pdp.title}</h3>
               <p>{pdp.description}</p>
               {pdp.original_mrp !== null && <p className="generated-mrp">Originally ₹{pdp.original_mrp.toLocaleString("en-IN")} new</p>}
+            </div>
+
+            <div className="generated-block">
+              <h4>Category · {filingLabel(pdp)}</h4>
+              {moved && <p><strong>Moved from {filingLabel(submitted)}:</strong> {pdp.category_reasoning}</p>}
             </div>
 
             {pdp.specifications.length > 0 && (

@@ -47,7 +47,7 @@ export default function DocsPage() {
 
           <div className="docs-steps">
             <div className="docs-step"><span>Step 1</span><p><code>ImageFetcher.fetchAll()</code> downloads every URL once, rejects non-images and anything under 2KB, and caches by URL for the process.</p></div>
-            <div className="docs-step"><span>Step 2</span><p>Pass A drafts without the photos attached — it sees them only through <code>analyze_images</code> — and self-corrects against <code>checkDraft()</code> up to 3 times.</p></div>
+            <div className="docs-step"><span>Step 2</span><p>Pass A drafts without the photos attached — it sees them only through <code>analyze_images</code> — fixes the seller&apos;s category and subcategory if the photos show otherwise, and self-corrects against <code>checkDraft()</code> up to 3 times.</p></div>
             <div className="docs-step"><span>Step 3</span><p>Pass B gets the finished draft and the raw photos cold, with none of Pass A&apos;s reasoning, so it can contradict it.</p></div>
           </div>
         </section>
@@ -73,6 +73,7 @@ export default function DocsPage() {
                 <li>A disclosed defect the draft marks &ldquo;omitted&rdquo;</li>
                 <li>&ldquo;Brand New&rdquo;/&ldquo;Like New&rdquo; tier against visible damage or a disclosed defect</li>
                 <li>Observed brand in the photos disagreeing with the seller&apos;s claimed brand</li>
+                <li>A subcategory that doesn&apos;t belong to the chosen category</li>
               </ul>
             </div>
             <div className="docs-card warning">
@@ -81,6 +82,7 @@ export default function DocsPage() {
                 <li>A specification with confidence below 0.4</li>
                 <li>A spec that cites an image, but vision analysis never reported that detail</li>
                 <li>Original MRP sourced from model knowledge rather than a web result — only when the web search fails or finds nothing</li>
+                <li>The draft moves the listing out of the seller&apos;s category, or changes a subcategory the seller picked — Pass B then checks the move against the photos</li>
                 <li>Description under 80 characters</li>
               </ul>
             </div>
@@ -137,7 +139,7 @@ npm run agent -- --only 1,4`}</pre>
           <div className="docs-note">
             The CLI writes one array to <code>output/results.json</code>, an entry per listing. The HTTP path
             (<code>POST /listings/generate</code>) is what sellers hit: one submission per request through the
-            same <code>runListing()</code>, saved as a <code>Listing</code> whose <code>publish</code> mirrors
+            same <code>runListing()</code>, saved as a <code>Listing</code> under the agent&apos;s category, whose <code>publish</code> mirrors
             the verdict — or a 503 with nothing saved if no draft came back.
           </div>
         </section>
