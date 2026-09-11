@@ -475,8 +475,6 @@ footer span{margin-left:auto}
 .docs-card.warning h4{color:var(--amber)}
 .docs-card.ok h4{color:var(--success)}
 .docs-card ul{color:var(--muted);font-size:13px;line-height:1.7;list-style:disc;margin:0;padding-left:18px}
-.flow .off{opacity:.6}
-.flow .off .box{stroke-dasharray:4 3}
 .docs-card ul li::marker{color:var(--stone)}
 
 .docs-steps{display:grid;gap:12px;grid-template-columns:repeat(3,1fr);margin-top:6px}

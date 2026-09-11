@@ -80,7 +80,7 @@ export default function DocsPage() {
               <ul>
                 <li>A specification with confidence below 0.4</li>
                 <li>A spec that cites an image, but vision analysis never reported that detail</li>
-                <li>Original MRP sourced from model knowledge rather than a web result — every MRP today, since no search key is set</li>
+                <li>Original MRP sourced from model knowledge rather than a web result — only when the web search fails or finds nothing</li>
                 <li>Description under 80 characters</li>
               </ul>
             </div>
@@ -89,15 +89,46 @@ export default function DocsPage() {
           <div className="docs-note">
             <strong>Sourcing discipline:</strong> every specification the draft publishes carries one of three
             sources — <code>image</code> (must name the photo it&apos;s read from), <code>lookup</code> (from
-            product search), or <code>seller</code> (asserted, uncorroborated). A spec that fits none of the
+            <code>product_lookup</code>&apos;s web search), or <code>seller</code> (asserted, uncorroborated). A spec that fits none of the
             three doesn&apos;t go in the listing at all — omitting an unsure spec is the correct move, never a
             mark against the draft.
           </div>
         </section>
 
         <section className="docs-section">
+          <h2>What it logs</h2>
+          <p>
+            Every step logs when it succeeds and when it doesn&apos;t, and every line carries the listing id, so one
+            <code>grep</code> follows a single listing through both passes. A plain log means it worked, a warning
+            means it took the cautious path (a rejected draft, an unverified MRP, an escalation), and an error means
+            something actually broke.
+          </p>
+          <table className="docs-table">
+            <thead>
+              <tr><th>Step</th><th>On success</th><th>Warning / error</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>runListing()</td><td>Started, with category and image count; how many images loaded.</td><td>Warning if some images failed to load, error if none did. A pass that throws is logged with its name and stack trace.</td></tr>
+              <tr><td>Each pass</td><td>Started on which model; completed, with time and tokens.</td><td>Error if it hits its turn limit or stops without calling a submit tool.</td></tr>
+              <tr><td>analyze_images</td><td>How many images it read; the brand it saw, observation and damage counts.</td><td>Warning if there was no usable image; error if the vision call failed.</td></tr>
+              <tr><td>product_lookup</td><td>The product searched; the match, MRP and number of web sources.</td><td>Error if the web search failed and it fell back; warning when the MRP came from model knowledge.</td></tr>
+              <tr><td>submit_draft</td><td>Accepted, on which attempt, with any warning codes.</td><td>Warning for each rejected attempt with its blocking codes; error when still blocking after 3 attempts and escalated.</td></tr>
+              <tr><td>check_draft</td><td>Blocking codes (or none) and the warning count.</td><td>—</td></tr>
+              <tr><td>submit_review</td><td>Verdict, findings, contradicted claims and omissions.</td><td>Warning if the review came back the wrong shape.</td></tr>
+              <tr><td>Verdict</td><td><code>auto_publish</code>, with total time and tokens.</td><td>Warning for human review, with the escalation reasons; error if no draft was produced.</td></tr>
+              <tr><td>generate() (HTTP)</td><td>The request; saved, and whether it was published or held.</td><td>Error if the agent returned no draft (the 503) or the save failed.</td></tr>
+            </tbody>
+          </table>
+          <div className="docs-note">
+            <strong>Why tools log their own failures:</strong> the Agents SDK catches an error thrown inside a tool
+            and hands the model a generic &ldquo;an error occurred&rdquo; message instead of raising it. If the tool
+            didn&apos;t log it first, a failed vision or search call would leave nothing in the logs.
+          </div>
+        </section>
+
+        <section className="docs-section">
           <h2>Run it yourself</h2>
-          <p>The CLI boots only the agent module — no database, no HTTP port, just API keys.</p>
+          <p>The CLI boots only the agent module — no database, no HTTP port, just <code>OPENAI_API_KEY</code>, which also covers the web search.</p>
           <pre className="docs-code">{`# every listing in the file, AGENT_CONCURRENCY at a time (default 3)
 npm run agent -- --input data/listings.json --output output/results.json
 
@@ -119,14 +150,14 @@ npm run agent -- --only 1,4`}</pre>
             </thead>
             <tbody>
               <tr><td>agent.service.ts</td><td><code>runListing()</code>: one listing — fetch images, Pass A, Pass B if a draft exists, <code>assemble()</code>. <code>run()</code>: the CLI&apos;s bounded worker pool over many listings.</td></tr>
-              <tr><td>agent.config.ts</td><td>Model names, search backend and concurrency from env; warns when both passes share one model.</td></tr>
+              <tr><td>agent.config.ts</td><td>Model names and concurrency from env; warns when both passes share one model.</td></tr>
               <tr><td>agent-runner.ts</td><td>Wraps the <code>@openai/agents</code> SDK loop; defines the <code>toolUseBehavior</code> exit condition read once per turn.</td></tr>
               <tr><td>tools.ts</td><td>The five tools: <code>analyze_images</code>, <code>product_lookup</code>, <code>submit_draft</code>, <code>check_draft</code>, <code>submit_review</code>.</td></tr>
               <tr><td>draft-checker.ts</td><td><code>checkDraft()</code> — the deterministic rule engine — plus <code>hasBlocking</code>/<code>summarize</code>.</td></tr>
               <tr><td>schemas.ts</td><td>Every Zod schema: tool outputs, the draft shape, the review shape.</td></tr>
               <tr><td>prompts/pass-prompts.ts</td><td>System prompts and seed-message builders for both passes.</td></tr>
               <tr><td>image-fetcher.ts</td><td>Downloads and validates listing images once per URL per process.</td></tr>
-              <tr><td>web-search.ts</td><td>Optional Tavily/Serper search. No key is set in the current setup, so it returns nothing and <code>product_lookup</code> answers from OpenAI&apos;s model knowledge.</td></tr>
+              <tr><td>llm/llm.service.ts</td><td><code>generateObject()</code> for one-shot structured calls like vision, and <code>generateObjectWithWebSearch()</code> — OpenAI&apos;s hosted web search on the Responses API — for <code>product_lookup</code>. If the search fails or finds nothing, the MRP is marked as model knowledge.</td></tr>
               <tr><td>listings.service.ts</td><td><code>generate()</code> — the HTTP handler that calls the agent and persists the result.</td></tr>
               <tr><td>scripts/run-agent.ts</td><td>CLI entrypoint: standalone Nest context, no database; <code>--only</code> filters, output is one array.</td></tr>
             </tbody>

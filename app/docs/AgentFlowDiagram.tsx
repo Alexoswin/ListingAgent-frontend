@@ -177,10 +177,8 @@ export default function AgentFlowDiagram() {
       <rect x={586} y={16} width={478} height={104} rx={10} className="panel panel-ext" />
       <text x={600} y={35} fontSize={11} className="strong">External APIs</text>
       <text x={1050} y={35} fontSize={9.5} textAnchor="end" className="muted">called from both passes</text>
-      <Box x={600} y={46} w={218} h={60} title="OpenAI API" sub={["each model turn (Agents SDK)", "vision + lookup via generateObject()"]} />
-      <g className="off">
-        <Box x={832} y={46} w={218} h={60} title="Tavily / Serper · off" sub={["optional search for product_lookup", "no key set → never called"]} />
-      </g>
+      <Box x={600} y={46} w={218} h={60} title="OpenAI API" sub={["each model turn (Agents SDK)", "vision via generateObject()"]} />
+      <Box x={832} y={46} w={218} h={60} title="OpenAI web search" sub={["product_lookup · Responses API", "fails → model knowledge"]} />
       <Edge points={[[470, PANEL_TOP], [470, 82], [586, 82]]} dashed />
       <Edge points={[[704, PANEL_TOP], [704, 120]]} dashed />
       <Label x={528} y={76} text="calls" anchor="middle" />
@@ -215,7 +213,7 @@ export default function AgentFlowDiagram() {
         turn="seller JSON + hints · no photos"
         tools={[
           ["analyze_images", "vision · writes analysis"],
-          ["product_lookup", "MRP via OpenAI → lookups[]"],
+          ["product_lookup", "MRP via web search → lookups[]"],
           ["submit_draft", "runs checkDraft() · the exit"],
         ]}
         outcomes={[
