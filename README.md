@@ -2,7 +2,7 @@
 
 Next.js frontend for the Circle listing agent. Lets a seller submit raw listing data, watch the agent generate a listing, and review the verification verdict.
 
-See the [root README](../README.md) for the full project overview and how this fits with the backend.
+The backend lives in [ListingAgent](https://github.com/Alexoswin/ListingAgent) — see its README for the agent, the API, and setup.
 
 ## Setup
 
@@ -45,4 +45,4 @@ app/
 public/                # static assets
 ```
 
-> Note: this is the initial scaffold — the listing submission form, results view, and verification dashboard described in the root README are not yet built.
+> Note: this is the initial scaffold — the listing submission form, results view, and verification dashboard are not yet built.
